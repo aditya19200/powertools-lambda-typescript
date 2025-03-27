@@ -1,0 +1,93 @@
+# DynamoDB Idempotency - Partition Key Management Improvement
+
+##  Current Problem
+In systems using AWS Lambda with DynamoDB for idempotency tracking, there's a critical performance bottleneck:
+- Existing implementation uses a composite key (pk, sk)
+- Setting `sortKeyAttribute` causes all idempotency checks for a Lambda to share a single partition
+- Sharing a single partition leads to "hot partitions" under high load
+- Hot partitions can cause:
+  - Increased latency
+  - Throttling
+  - Potential request failures
+
+##  Proposed Solution
+Provide flexible key generation strategies to prevent hot partitions:
+
+### Key Features
+1. Custom Key Generation
+   - Allow injection/override of `getKey` method
+   - Enable developers to control row creation logic
+   - Support dynamic partition key generation
+
+2. Anti-Hot Partition Strategies
+   - Implement key distribution mechanisms
+   - Support random or time-based key suffixing
+   - Provide configurable key generation algorithms
+
+### Example Implementation Concept
+```typescript
+import { DynamoDBPersistenceLayer } from '@aws-lambda-powertools/idempotency';
+
+// Custom key generation strategy
+const customKeyStrategy = (executionId: string) => {
+  // Inject randomness or time-based suffix
+  const suffix = Math.floor(Math.random() * 10);
+  return `${executionId}-${suffix}`;
+};
+
+const persistenceLayer = new DynamoDBPersistenceLayer({
+  tableName: 'IdempotencyTable',
+  getKey: customKeyStrategy
+});
+```
+
+## Benefits
+- Prevent hot partition issues
+- Improve Lambda performance under high concurrency
+- Provide granular control over key generation
+- Maintain existing idempotency guarantees
+
+##  Potential Implementation Approaches
+1. **Configurable Suffix**
+   - Allow adding random/time-based suffix
+   - Automatically distribute keys
+
+2. **Custom Key Function**
+   - Full developer control over key generation
+   - Support complex distribution logic
+
+3. **Pre-defined Distribution Strategies**
+   - Time-based bucketing
+   - Hash-based distribution
+   - Random key generation
+
+##  Considerations
+- Maintain backward compatibility
+- Minimal performance overhead
+- Clear documentation of new strategies
+- Sensible default behavior
+
+##  Cross-Language Support
+Recommendation to evaluate and implement in:
+- Python Powertools
+- Java Powertools
+- .NET Powertools
+
+##  Implementation Checklist
+- [ ] Design flexible key generation interface
+- [ ] Create configuration options
+- [ ] Implement default distribution strategy
+- [ ] Add comprehensive documentation
+- [ ] Create migration guide
+- [ ] Develop robust test cases
+
+
+
+##  Potential Use Cases
+1. High-frequency transaction processing
+2. Microservices with concurrent Lambda executions
+3. Event-driven architectures with massive scale
+
+
+
+s
